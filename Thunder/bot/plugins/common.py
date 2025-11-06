@@ -20,7 +20,7 @@ from Thunder.utils.human_readable import humanbytes
 from Thunder.utils.logger import logger
 from Thunder.utils.messages import (
     MSG_ABOUT, MSG_BUTTON_ABOUT, MSG_BUTTON_CLOSE, MSG_BUTTON_GET_HELP,
-    "Join Status channel", MSG_BUTTON_JOIN_CHANNEL, MSG_BUTTON_VIEW_PROFILE,
+    MSG_BUTTON_JOIN_CHANNEL, MSG_BUTTON_VIEW_PROFILE,
     MSG_COMMUNITY_CHANNEL, MSG_DC_ANON_ERROR, MSG_DC_FILE_ERROR,
     MSG_DC_FILE_INFO, MSG_DC_INVALID_USAGE, MSG_DC_UNKNOWN,
     MSG_ERROR_USER_INFO, MSG_FILE_TYPE_ANIMATION, MSG_FILE_TYPE_AUDIO,
@@ -278,4 +278,5 @@ async def ping_command(bot: Client, msg: Message):
         )
     except MessageNotModified:
         pass
+
 
