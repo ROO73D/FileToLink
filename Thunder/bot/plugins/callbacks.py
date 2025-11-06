@@ -20,23 +20,70 @@ from Thunder.utils.messages import (
 from Thunder.vars import Var
 
 async def get_force_channel_button(client: Client):
+    """
+    Build an "Join Channel" button that points to a **join request** invite link
+    for FORCE_CHANNEL_ID. Falls back to primary invite_link or public @username.
+
+    Requirements for join-request:
+      - Bot must be admin in the channel with permission "Invite users via link".
+      - Telegram supports create_chat_invite_link(..., creates_join_request=True).
+    """
     if not Var.FORCE_CHANNEL_ID:
         return None
+
     try:
+        # Get chat safely (handle FloodWait)
         try:
             chat = await client.get_chat(Var.FORCE_CHANNEL_ID)
         except FloodWait as e:
             await asyncio.sleep(e.value)
             chat = await client.get_chat(Var.FORCE_CHANNEL_ID)
-        if chat:
-            invite_link = chat.invite_link or (f"https://t.me/{chat.username}" if chat.username else None)
-            if invite_link:
-                return [InlineKeyboardButton(
-                    MSG_BUTTON_JOIN_CHANNEL.format(channel_title=chat.title or "Channel"),
-                    url=invite_link
-                )]
+
+        invite_link = None
+
+        # 1) Try to create a *join-request* invite link (preferred)
+        try:
+            try:
+                il = await client.create_chat_invite_link(
+                    chat_id=Var.FORCE_CHANNEL_ID,
+                    name="ForceSub Join Request",
+                    creates_join_request=True
+                )
+            except FloodWait as e:
+                await asyncio.sleep(e.value)
+                il = await client.create_chat_invite_link(
+                    chat_id=Var.FORCE_CHANNEL_ID,
+                    name="ForceSub Join Request",
+                    creates_join_request=True
+                )
+            invite_link = il.invite_link
+            logger.debug(f"Created join-request invite link for {Var.FORCE_CHANNEL_ID}")
+        except Exception as ce:
+            # Common reasons: bot lacks admin permission "Invite users via link"
+            # or Telegram restrictions. We'll fall back.
+            logger.warning(
+                f"Could not create join-request invite link for {Var.FORCE_CHANNEL_ID}: {ce}"
+            )
+
+        # 2) Fall back to primary invite_link if join-request couldn’t be created
+        if not invite_link and getattr(chat, "invite_link", None):
+            invite_link = chat.invite_link
+            logger.debug(f"Using primary invite_link for {Var.FORCE_CHANNEL_ID}")
+
+        # 3) Fall back to public username link if available
+        if not invite_link and getattr(chat, "username", None):
+            invite_link = f"https://t.me/{chat.username}"
+            logger.debug(f"Using public @username link for {Var.FORCE_CHANNEL_ID}")
+
+        if invite_link:
+            return [InlineKeyboardButton(
+                MSG_BUTTON_JOIN_CHANNEL.format(channel_title=chat.title or "Channel"),
+                url=invite_link
+            )]
+
     except Exception as e:
         logger.error(f"Error getting force channel button: {e}", exc_info=True)
+
     return None
 
 @StreamBot.on_callback_query(filters.regex(r"^help_command$"))
